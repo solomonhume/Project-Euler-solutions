@@ -8,95 +8,64 @@
 
 
 def compute():
-	ans = sum(1 for handpair in HANDS if is_player1_win(handpair))
-	return str(ans)
-
+	#HANDS =open('poker.txt').read().strip().split('\n')
+	print(sum(1 for handpair in HANDS if is_player1_win(handpair)))
 
 # Handpair is a space-separated string of 10 cards.
 def is_player1_win(handpair):
+	
+	RANKS = "23456789TJQKA"
+	SUITS = "SHCD"
 	# Parse cards and divide among players
-	cards = [parse_card(item) for item in handpair.split(" ")]
+	cards = [(RANKS.index(i[0]), SUITS.index(i[1])) for i in handpair.split(" ")]
 	assert len(cards) == 10
-	player1 = cards[ : 5]
-	player2 = cards[5 : ]
+	player1 = cards[:5]
+	player2 = cards[5:]
 	# Compare hand scores
 	return get_score(player1) > get_score(player2)
 
-
-# Hand is an array of cards. Returns a score for the given hand. If handX beats handY then get_score(handX) > get_score(handY),
-# and if handX is a draw with handY then get_score(handX) = get_score(handY) (even if the hands have different cards).
-# Note that scores need not be consecutive - for example even if scores 1 and 3 exist, there might be no
-# hand that produces a score of 2. The comparison property is the only guarantee provided by get_score().
 def get_score(hand):
-	assert len(hand) == 5
-	
-	# rankcounts[i] is the number of cards with the rank of i
 	rankcounts = [sum(1 for (rank, _) in hand if rank == i) for i in range(13)]
-	
 	# rankcounthist[i] is the number of times a rank count of i occurs.
-	# For example if there is exactly one triplet, then rankcounthist[3] = 1.
-	rankcounthist = [rankcounts.count(i) for i in range(6)]
-	
-	# flushsuit is in the range [0,3] if all cards have that suit; otherwise -1
-	minsuit = min(suit for (_, suit) in hand)
-	maxsuit = max(suit for (_, suit) in hand)
-	flushsuit = minsuit if minsuit == maxsuit else -1
-	
-	bestcards = get_5_frequent_highest_cards(rankcounts, rankcounthist)
-	straighthighrank = get_straight_high_rank(rankcounts)
+	# For example if there is exactly one triplet, then rankc[3] = 1.
+	rankc = [rankcounts.count(i) for i in range(5)]
+	is_flush = len(set((suit for (_, suit) in hand)))==1
+	bestcards = get_5_frequent_highest_cards(rankcounts, rankc)
+	is_straight = check_straight(rankcounts)
 	
 	# Main idea: Encode the hand type in the top bits, then encode up to 5 cards in big-endian (4 bits each).
-	if   straighthighrank != -1 and flushsuit != -1     : return 8 << 20 | straighthighrank  # Straight flush
-	elif rankcounthist[4] == 1                          : return 7 << 20 | bestcards         # Four of a kind
-	elif rankcounthist[3] == 1 and rankcounthist[2] == 1: return 6 << 20 | bestcards         # Full house
-	elif flushsuit != -1                                : return 5 << 20 | bestcards         # Flush
-	elif straighthighrank != -1                         : return 4 << 20 | straighthighrank  # Straight
-	elif rankcounthist[3] == 1                          : return 3 << 20 | bestcards         # Three of a kind
-	elif rankcounthist[2] == 2                          : return 2 << 20 | bestcards         # Two pairs
-	elif rankcounthist[2] == 1                          : return 1 << 20 | bestcards         # One pair
-	else                                                : return 0 << 20 | bestcards         # High card
+	if   is_straight and is_flush  : m = 8		  # Straight flush
+	elif rankc[4]                  : m = 7        # Four of a kind
+	elif rankc[3] and rankc[2]     : m = 6        # Full house
+	elif is_flush                  : m = 5        # Flush
+	elif is_straight               : m = 4		  # Straight
+	elif rankc[3]                  : m = 3        # Three of a kind
+	elif rankc[2] == 2             : m = 2        # Two pairs
+	elif rankc[2]                  : m = 1        # One pair
+	else                           : m = 0        # High card
+	return m<<20 | bestcards
 
 
 # Encodes 5 card ranks into 20 bits in big-endian, starting with the most frequent cards,
-# breaking ties by highest rank. For example, the set of ranks {5,5,T,8,T} is encoded as
-# the sequence [T,T,5,5,8] because pairs come before singles and highest pairs come first.
+# breaking ties by highest rank. 
 def get_5_frequent_highest_cards(ranks, rankshist):
 	result = 0
-	count = 0
-	
 	for i in reversed(range(len(rankshist))):
 		for j in reversed(range(len(ranks))):
 			if ranks[j] == i:
 				for k in range(i):
-					if count >= 5:
-						break
 					result = result << 4 | j
-					count += 1
-	
-	if count != 5:
-		raise ValueError()
 	return result
 
-
-# Returns the rank of the highest card in the straight, or -1 if the set of cards does not form a straight.
 # This takes into account the fact that ace can be rank 0 (i.e. face value 1) or rank 13 (value immediately after king).
-def get_straight_high_rank(ranks):
+def check_straight(ranks):
+	#print (ranks)
 	for i in reversed(range(3, len(ranks))):
 		for j in range(5):
 			if ranks[(i - j + 13) % 13] == 0:
 				break  # Current offset is not a straight
 		else:  # Straight found
 			return i
-	return -1
-
-
-# Card is a 2-letter string like "2H" for "two of hearts". Returns a pair of integers (rank, suit).
-def parse_card(card):
-	return (RANKS.index(card[0]), SUITS.index(card[1]))
-
-
-RANKS = "23456789TJQKA"
-SUITS = "SHCD"
 
 
 HANDS = [
