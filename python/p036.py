@@ -1,24 +1,14 @@
-# 
-# Solution to Project Euler problem 36
-# Copyright (c) Project Nayuki. All rights reserved.
-# 
-# https://www.nayuki.io/page/project-euler-solutions
-# https://github.com/nayuki/Project-Euler-solutions
-# 
-
-
-def compute():
-	ans = sum(i for i in range(1000000) if is_decimal_binary_palindrome(i))
-	return str(ans)
-
-
-def is_decimal_binary_palindrome(n):
-	s = str(n)
-	if s != s[ : : -1]:
-		return False
-	t = bin(n)[2 : ]
-	return t == t[ : : -1]
-
-
-if __name__ == "__main__":
-	print(compute())
+def euler36():
+	s = 0
+	for i in range(1,1000):
+		j = int(str(i)+str(i)[::-1])
+		if bin(j)[2:]==bin(j)[2:][::-1]:
+			s+=j
+	for i in range(0,100):
+		for k in range(10):
+			if i!=0: j = int(str(i)+str(k)+str(i)[::-1])
+			else: j = k
+			if bin(j)[2:]==bin(j)[2:][::-1]:
+				s+=j
+	print (s)
+euler36()
